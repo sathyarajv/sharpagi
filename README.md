@@ -50,6 +50,7 @@ Use sharpagi_test console application to test the agi agent with this user secre
   "INITIAL_TASK": "Develop a task list"
 }
 ```
+![image](https://user-images.githubusercontent.com/9957258/234792431-076d07c1-9087-43f0-959d-6de8fb9a30e0.png)
 
 ## License
 This plugin is based on the BabyAGI project by @yoheinakajima (https://github.com/yoheinakajima). Please refer to their repository for licensing information.
