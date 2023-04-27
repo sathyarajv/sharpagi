@@ -6,7 +6,35 @@ SharpAGI is a C# library based on the BabyAGI project by [@yoheinakajima].
 
 ## Quickstart
 
-Use these settings in user secrets to run the code.
+To create a Sharpagi client to run the agent in console application
+
+```csharp
+   Sharpagi sharpagi = new Sharpagi((output,consolecolor) =>
+   {
+       if (consolecolor.HasValue)
+       {
+           Console.ForegroundColor = consolecolor.Value;
+       }
+       Console.WriteLine(output);
+       if (consolecolor.HasValue)
+       {
+           Console.ResetColor();
+       }
+   });
+   await sharpagi.Agent(configuration);
+```
+
+To cerate a Sharpagi client in other application types
+```csharp
+  StringBuilder printOutput = new StringBuilder();
+  Sharpagi sharpagi = new Sharpagi((output) =>
+  {
+     printOutput.AppendLine(output);
+  });
+  await sharpagi.Agent(configuration);
+```
+
+Use sharpagi_test console application to test the agi agent with this user secret
 
 ```csharp
 {
@@ -23,8 +51,8 @@ Use these settings in user secrets to run the code.
 }
 ```
 
-License
+## License
 This plugin is based on the BabyAGI project by @yoheinakajima (https://github.com/yoheinakajima). Please refer to their repository for licensing information.
 
-Acknowledgments
+## Acknowledgments
 This plugin is based on the BabyAGI project by [@yoheinakajima] A big thank you to the author for their original work.

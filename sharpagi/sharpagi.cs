@@ -12,6 +12,8 @@ namespace sharpagi
 {
     public class Sharpagi
     {
+        private readonly Action<string, ConsoleColor?> printOutput;
+
         public string objective = string.Empty;
         public string openaiApiKey = string.Empty;
         public string openaiApiModel = string.Empty;
@@ -23,12 +25,17 @@ namespace sharpagi
         public string initialTask = string.Empty;
         public string pineconeProjectName = string.Empty;
 
-        public Sharpagi()
+        public Sharpagi(Action<string, ConsoleColor?> outputCallback)
         {
-
+            printOutput = outputCallback;
         }
 
-        public async Task Main(IConfiguration configuration)
+        public Sharpagi(Action<string> outputCallback)
+        : this((output, color) => outputCallback(output))
+        {
+        }
+
+        public async Task Agent(IConfiguration configuration)
         {
 
             openaiApiKey = configuration["OPENAI_API_KEY"];
@@ -46,26 +53,18 @@ namespace sharpagi
             }
 
 
-            // Check if we know what we are doing
-            Debug.Assert(!string.IsNullOrEmpty(openaiApiKey), "OPENAI_API_KEY environment variable is missing from UserSecrets");
-            Debug.Assert(!string.IsNullOrEmpty(openaiApiModel), "OPENAI_API_MODEL environment variable is missing from UserSecrets");
+            if(string.IsNullOrEmpty(openaiApiKey)) throw new ArgumentException("OPENAI_API_KEY environment variable is missing from UserSecrets");
+            if(string.IsNullOrEmpty(openaiApiModel)) throw new ArgumentException("OPENAI_API_MODEL environment variable is missing from UserSecrets");
             if (openaiApiModel.ToLower().Contains("gpt-4"))
             {
-                Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine("*****USING GPT-4. POTENTIALLY EXPENSIVE. MONITOR YOUR COSTS*****");
-                Console.ResetColor();
+                printOutput("*****USING GPT-4. POTENTIALLY EXPENSIVE. MONITOR YOUR COSTS*****", ConsoleColor.Red);
             }
 
             // Print OBJECTIVE
-            Console.ForegroundColor = ConsoleColor.Blue;
-            Console.WriteLine("\n*****OBJECTIVE*****\n");
-            Console.ResetColor();
-            Console.WriteLine(objective);
+            printOutput("\n*****OBJECTIVE*****\n", ConsoleColor.Blue);
+            printOutput(objective, null);
 
-            Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine("\nInitial task: " + initialTask);
-            Console.ResetColor();
-
+            printOutput("\nInitial task: " + initialTask, ConsoleColor.Yellow);
 
             // Create Pinecone index
             var indexes = await pinecone.ListIndexes();
@@ -98,28 +97,23 @@ namespace sharpagi
                 if (taskList.Count > 0)
                 {
                     // Print the task list
-                    Console.ForegroundColor = ConsoleColor.Magenta;
-                    Console.WriteLine("\n*****TASK LIST*****\n");
-                    Console.ResetColor();
+                    printOutput("\n*****TASK LIST*****\n", ConsoleColor.Magenta);
+
                     foreach (var t in taskList)
                     {
-                        Console.WriteLine(t["task_id"] + ": " + t["task_name"]);
+                        printOutput(t["task_id"] + ": " + t["task_name"], null);
                     }
 
                     // Step 1: Pull the first task
                     var task = taskList.Dequeue();
-                    Console.ForegroundColor = ConsoleColor.Green;
-                    Console.WriteLine("\n*****NEXT TASK*****\n");
-                    Console.ResetColor();
-                    Console.WriteLine(task["task_id"] + ": " + task["task_name"]);
+                    printOutput("\n*****NEXT TASK*****\n", ConsoleColor.Green);
+                    printOutput(task["task_id"] + ": " + task["task_name"], null);
 
                     // Send to execution function to complete the task based on the context
                     var result = await ExecutionAgent(objective, task["task_name"]);
                     var thisTaskId = int.Parse(task["task_id"]);
-                    Console.ForegroundColor = ConsoleColor.Yellow;
-                    Console.WriteLine("\n*****TASK RESULT*****\n");
-                    Console.ResetColor();
-                    Console.WriteLine(result);
+                    printOutput("\n*****TASK RESULT*****\n", ConsoleColor.Yellow);
+                    printOutput(result?.ToString(), null);
 
 
                     // Step 2: Enrich result and store in Pinecone
@@ -163,6 +157,7 @@ namespace sharpagi
                 Thread.Sleep(1000);  // Sleep before checking the task list again
             }
         }
+
         public void AddTask(Dictionary<string, string> task)
         {
             taskList.Enqueue(task);
@@ -209,7 +204,7 @@ namespace sharpagi
                 {
                     throw new Exception("Unknown Error");
                 }
-                Console.WriteLine($"{embeddingResult.Error.Code}: {embeddingResult.Error.Message}");
+                printOutput($"{embeddingResult.Error.Code}: {embeddingResult.Error.Message}", null);
             }
             return null;
         }
@@ -264,15 +259,15 @@ namespace sharpagi
                             return response.Choices.FirstOrDefault()?.Message.Content.Trim() ?? string.Empty;
                         else
                         {
-                            if (response.Error.Message.Contains("ratelimit", StringComparison.OrdinalIgnoreCase))
-                                await Task.Delay(10000);
+                            if (response.Error.Message.Contains("rate limit", StringComparison.OrdinalIgnoreCase))
+                                await Task.Delay(20000);
                         }
                     }
                 }
-                catch (Exception ex) when (ex.Message.Contains("ratelimit"))
+                catch (Exception ex) when (ex.Message.Contains("rate limit"))
                 {
-                    Console.WriteLine("The OpenAI API rate limit has been exceeded. Waiting 10 seconds and trying again.");
-                    await Task.Delay(10000); // Wait 10 seconds and try again
+                    printOutput("The OpenAI API rate limit has been exceeded. Waiting 10 seconds and trying again.", null);
+                    await Task.Delay(20000); // Wait 10 seconds and try again
                 }
             }
         }
@@ -290,7 +285,7 @@ namespace sharpagi
             Start the task list with number {nextTaskId}.";
             var response = await openai_call(prompt);
             var newTasks = response.Split('\n');
-            taskList = new Queue<Dictionary<string, string>>(newTasks.Select((t, index) => new Dictionary<string, string> { { "task_id", (index + nextTaskId).ToString() }, { "task_name", (t.Trim().Length>=2)?t.Trim().Substring(2):t.Trim() } }));
+            taskList = new Queue<Dictionary<string, string>>(newTasks.Select((t, index) => new Dictionary<string, string> { { "task_id", (index + nextTaskId).ToString() }, { "task_name", (t.Trim().Length >= 2) ? t.Trim().Substring(2) : t.Trim() } }));
         }
 
         public async Task<(string stdout, string stderr)> RunCommandAsync(string command)

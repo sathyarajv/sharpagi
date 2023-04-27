@@ -1,12 +1,21 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <OutputType>Exe</OutputType>
+    <OutputType>Library</OutputType>
     <TargetFramework>net6.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <UserSecretsId>50c01620-9aba-4847-9fa1-0f06066b9d14</UserSecretsId>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="sharpagi\**" />
+    <Compile Remove="sharpagi_test\**" />
+    <EmbeddedResource Remove="sharpagi\**" />
+    <EmbeddedResource Remove="sharpagi_test\**" />
+    <None Remove="sharpagi\**" />
+    <None Remove="sharpagi_test\**" />
+  </ItemGroup>
 	
 	<ItemGroup>
 	<PackageReference Include="Betalgo.OpenAI" Version="6.8.5" />
