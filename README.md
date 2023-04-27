@@ -2,7 +2,7 @@
 
 ## Description
 
-SharpAGI is a C# library based on the BabyAGI project by [@yoheinakajima]. 
+SharpAGI is a C# library for creating and using Task-Driven Autonomous Agents in dotnet. 
 
 ## Quickstart
 
